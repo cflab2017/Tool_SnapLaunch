@@ -108,28 +108,20 @@ fn write_cascading_menu(root: &str, exe_path: &str, config: &ToolsConfig) -> io:
         cmd_key.set_value("", &command_line)?;
     }
 
-    // -- 구분선 (CommandFlags = 0x20 → ECF_SEPARATOR) --
-    // 알파벳상 툴들("aaa_...")보다 뒤, 관리/제거("zzz_...")보다 앞에 위치하도록 "yyy_..." 사용.
-    let sep_path = format!(r"{}\yyy_separator", shell_path);
-    let (sep_key, _) = hkcu.create_subkey(&sep_path)?;
-    sep_key.set_value("MUIVerb", &"-".to_string())?;
-    sep_key.set_raw_value(
+    // -- 관리 GUI 호출 항목 --
+    // CommandFlags = 0x20 (ECF_SEPARATORBEFORE) 는 "이 항목 위에 구분선 그리기" 의미.
+    // 별도 구분선 항목을 두면 Shell 이 "-" 텍스트로 잘못 렌더링하므로, 관리 항목 자체에 플래그를 단다.
+    let manage_path = format!(r"{}\zzz_manage", shell_path);
+    let (manage_key, _) = hkcu.create_subkey(&manage_path)?;
+    manage_key.set_value("MUIVerb", &"툴 추가/관리...".to_string())?;
+    manage_key.set_value("Icon", &format!("{},0", exe_path))?;
+    manage_key.set_raw_value(
         "CommandFlags",
         &winreg::RegValue {
             bytes: 0x20u32.to_le_bytes().to_vec(),
             vtype: REG_DWORD,
         },
     )?;
-    // 구분선이라도 Shell 이 무시하지 않도록 빈 command 를 둔다.
-    let sep_cmd_path = format!(r"{}\command", sep_path);
-    let (sep_cmd_key, _) = hkcu.create_subkey(&sep_cmd_path)?;
-    sep_cmd_key.set_value("", &String::new())?;
-
-    // -- 관리 GUI 호출 항목 --
-    let manage_path = format!(r"{}\zzz_manage", shell_path);
-    let (manage_key, _) = hkcu.create_subkey(&manage_path)?;
-    manage_key.set_value("MUIVerb", &"툴 추가/관리...".to_string())?;
-    manage_key.set_value("Icon", &format!("{},0", exe_path))?;
     let manage_cmd_path = format!(r"{}\command", manage_path);
     let (manage_cmd_key, _) = hkcu.create_subkey(&manage_cmd_path)?;
     manage_cmd_key.set_value("", &format!("\"{}\" launch-manage", exe_path))?;
