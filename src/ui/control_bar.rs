@@ -27,7 +27,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 }
             }
         }
-        if ui.button("📤 메뉴 제거").clicked() {
+        if ui.button("📤 언인스톨").clicked() {
             if msgbox::confirm(
                 "컨텍스트 메뉴를 제거하시겠습니까?\n(등록된 툴 목록 파일은 그대로 유지됩니다.)",
                 "SnapLaunch",

@@ -129,7 +129,7 @@ fn write_cascading_menu(root: &str, exe_path: &str, config: &ToolsConfig) -> io:
     // -- 메뉴 제거 항목 --
     let uninstall_path = format!(r"{}\zzz_uninstall", shell_path);
     let (uninstall_key, _) = hkcu.create_subkey(&uninstall_path)?;
-    uninstall_key.set_value("MUIVerb", &"메뉴 제거".to_string())?;
+    uninstall_key.set_value("MUIVerb", &"언인스톨".to_string())?;
     let uninstall_cmd_path = format!(r"{}\command", uninstall_path);
     let (uninstall_cmd_key, _) = hkcu.create_subkey(&uninstall_cmd_path)?;
     uninstall_cmd_key.set_value("", &format!("\"{}\" uninstall", exe_path))?;
