@@ -1,0 +1,6 @@
+# 정적 링킹 설정: MSVC CRT를 EXE에 포함하여 별도 런타임 없이 동작하도록 함
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.i686-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
