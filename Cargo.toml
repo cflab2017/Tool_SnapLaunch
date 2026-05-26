@@ -12,6 +12,8 @@ winreg = "0.52"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rfd = "0.15"
+# 아이콘 PNG 디코딩용. PNG 디코더만 활성화하여 의존성을 최소화.
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [
@@ -20,6 +22,10 @@ windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_System_Com",
 ]}
+
+[target.'cfg(windows)'.build-dependencies]
+# Windows 리소스 파일을 생성하여 EXE 에 아이콘과 메타데이터를 임베드한다.
+winresource = "0.1"
 
 [profile.release]
 opt-level = "z"

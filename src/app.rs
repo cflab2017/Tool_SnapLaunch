@@ -167,13 +167,35 @@ fn handle_dropped_files(ctx: &egui::Context, state: &mut AppState) {
     });
 }
 
+/// EXE 에 임베드된 아이콘 PNG 바이트. 런타임에 egui 창 / 작업표시줄에 표시된다.
+const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
+
+/// PNG 바이트를 egui 의 IconData (RGBA 픽셀 + 크기) 로 디코드한다.
+/// 디코드 실패 시 None 을 반환하여 기본 아이콘을 사용한다.
+fn load_icon() -> Option<egui::IconData> {
+    // image 크레이트는 eframe 의 transitive dependency 라 별도 추가 없이 사용 가능
+    let img = image::load_from_memory(ICON_PNG).ok()?.into_rgba8();
+    let (w, h) = img.dimensions();
+    Some(egui::IconData {
+        rgba: img.into_raw(),
+        width: w,
+        height: h,
+    })
+}
+
 /// GUI 모드 진입점. eframe::run_native 를 호출한다.
 pub fn run() -> eframe::Result<()> {
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_title("🔧 자주사용하는 툴 관리")
+        .with_inner_size([640.0, 560.0])
+        .with_min_inner_size([520.0, 400.0]);
+
+    if let Some(icon) = load_icon() {
+        viewport = viewport.with_icon(icon);
+    }
+
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("🔧 자주사용하는 툴 관리")
-            .with_inner_size([640.0, 560.0])
-            .with_min_inner_size([520.0, 400.0]),
+        viewport,
         ..Default::default()
     };
     eframe::run_native(
