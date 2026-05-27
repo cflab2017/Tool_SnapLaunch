@@ -50,13 +50,18 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         let can_add = !state.form.name.trim().is_empty() && !state.form.path.trim().is_empty();
         if ui.add_enabled(can_add, style::primary(s.btn_add)).clicked() {
-            state.config.add_tool(
-                state.form.name.trim().to_string(),
-                state.form.path.trim().to_string(),
-                state.form.args.trim().to_string(),
-            );
+            // 새로 생성된 툴의 ID 를 받아서 dirty 표시 대상으로 등록
+            let new_id = state
+                .config
+                .add_tool(
+                    state.form.name.trim().to_string(),
+                    state.form.path.trim().to_string(),
+                    state.form.args.trim().to_string(),
+                )
+                .id
+                .clone();
             state.form.clear();
-            state.mark_dirty();
+            state.mark_dirty(&[new_id.as_str()]);
         }
         if ui.button(s.btn_clear).clicked() {
             state.form.clear();

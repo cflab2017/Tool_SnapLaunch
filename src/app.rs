@@ -1,6 +1,8 @@
 // 관리 GUI 의 핵심 상태/이벤트 루프.
 // eframe::App 트레잇을 구현하여 매 프레임 UI 를 다시 그린다.
 
+use std::collections::HashSet;
+
 use eframe::egui;
 
 use crate::config::ToolsConfig;
@@ -49,6 +51,8 @@ pub struct AppState {
     pub installed: bool,
     /// 마지막 설치/갱신 이후 툴 목록이 바뀌었는지 (UI 강조용)
     pub dirty_since_last_install: bool,
+    /// 마지막 설치/갱신 이후 변경된 개별 툴 ID 집합 — 해당 행을 옅은 파랑으로 강조
+    pub dirty_tool_ids: HashSet<String>,
     /// 현재 실행 중인 EXE 절대 경로
     pub current_exe_path: Option<String>,
     /// 레지스트리에 등록되어 있는 EXE 경로
@@ -65,6 +69,7 @@ impl AppState {
             pending_delete_id: None,
             installed: false,
             dirty_since_last_install: false,
+            dirty_tool_ids: HashSet::new(),
             current_exe_path: std::env::current_exe()
                 .ok()
                 .map(|p| p.to_string_lossy().to_string()),
@@ -86,7 +91,12 @@ impl AppState {
     }
 
     /// 툴 목록이 변경되었음을 표시하고 디스크에 저장한다.
-    pub fn mark_dirty(&mut self) {
+    /// `changed_ids` 로 전달된 툴 ID 들은 개별 행 강조용으로 dirty 셋에 등록된다.
+    /// (삭제처럼 행이 사라지는 변경에는 빈 슬라이스를 넘긴다.)
+    pub fn mark_dirty(&mut self, changed_ids: &[&str]) {
+        for id in changed_ids {
+            self.dirty_tool_ids.insert((*id).to_string());
+        }
         if let Err(e) = self.config.save() {
             msgbox::error(
                 &format!("{}{}", self.s().save_error_prefix, e),
@@ -94,6 +104,12 @@ impl AppState {
             );
         }
         self.dirty_since_last_install = true;
+    }
+
+    /// 메뉴 설치/갱신이 성공했을 때 호출 — 모든 dirty 표시를 초기화한다.
+    pub fn clear_dirty_marks(&mut self) {
+        self.dirty_tool_ids.clear();
+        self.dirty_since_last_install = false;
     }
 
     /// 언어만 변경되었을 때 호출. UI 갱신을 위해 즉시 저장하지만 dirty 플래그는 올리지 않는다.
@@ -155,10 +171,12 @@ impl eframe::App for SnapLaunchApp {
                 .replace("{name}", &name);
             if msgbox::confirm(&prompt, "SnapLaunch") {
                 self.state.config.remove_tool(&id);
+                // 삭제된 툴은 더 이상 행이 없으므로 dirty_tool_ids 에서도 제거
+                self.state.dirty_tool_ids.remove(&id);
                 if self.state.selected_id.as_deref() == Some(id.as_str()) {
                     self.state.selected_id = None;
                 }
-                self.state.mark_dirty();
+                self.state.mark_dirty(&[]);
             }
         }
     }

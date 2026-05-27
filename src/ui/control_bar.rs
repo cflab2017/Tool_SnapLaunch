@@ -16,7 +16,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 Ok(_) => {
                     msgbox::info(s.install_success, "SnapLaunch");
                     state.refresh_install_state();
-                    state.dirty_since_last_install = false;
+                    state.clear_dirty_marks();
                 }
                 Err(e) => {
                     msgbox::error(
@@ -95,7 +95,7 @@ pub fn refresh_button(ui: &mut egui::Ui, state: &mut AppState) {
             Ok(_) => {
                 msgbox::info(s.refresh_success, "SnapLaunch");
                 state.refresh_install_state();
-                state.dirty_since_last_install = false;
+                state.clear_dirty_marks();
             }
             Err(e) => {
                 msgbox::error(

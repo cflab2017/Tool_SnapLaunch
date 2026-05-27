@@ -9,6 +9,8 @@ use crate::ui::style;
 
 /// 죽은(경로가 유효하지 않은) 툴 이름 표시에 사용할 색상
 const DEAD_COLOR: Color32 = Color32::from_rgb(200, 60, 60);
+/// 마지막 갱신 이후 변경된 툴 행을 표시할 옅은 푸른색
+const DIRTY_COLOR: Color32 = Color32::from_rgb(70, 140, 220);
 
 /// 툴 목록 영역을 그린다.
 pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
@@ -93,24 +95,38 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                 });
                             }
                         } else {
-                            // 일반 표시 모드 — 경로가 존재하지 않으면 빨갛게 + 배지 표시
+                            // 일반 표시 모드:
+                            //  - 경로가 없으면 빨강(우선) + ⚠ 배지
+                            //  - 마지막 갱신 이후 변경된 행이면 옅은 푸른색
                             let alive = tool_exists(&path);
-                            let name_text = if alive {
-                                RichText::new(&name)
-                            } else {
+                            let is_dirty = state.dirty_tool_ids.contains(&id);
+                            let name_text = if !alive {
                                 RichText::new(format!("⚠ {}", name))
                                     .color(DEAD_COLOR)
                                     .strong()
+                            } else if is_dirty {
+                                RichText::new(format!("● {}", name)).color(DIRTY_COLOR)
+                            } else {
+                                RichText::new(&name)
                             };
-                            if ui.selectable_label(is_selected, name_text).clicked() {
+                            let resp = ui
+                                .selectable_label(is_selected, name_text)
+                                .on_hover_text(if is_dirty && alive {
+                                    s.dirty_tooltip
+                                } else {
+                                    ""
+                                });
+                            if resp.clicked() {
                                 to_select = Some(id.clone());
                             }
-                            let path_text = if alive {
-                                RichText::new(truncate_middle(&path, 50))
-                            } else {
+                            let path_text = if !alive {
                                 RichText::new(truncate_middle(&path, 50))
                                     .color(DEAD_COLOR)
                                     .italics()
+                            } else if is_dirty {
+                                RichText::new(truncate_middle(&path, 50)).color(DIRTY_COLOR)
+                            } else {
+                                RichText::new(truncate_middle(&path, 50))
                             };
                             ui.label(path_text).on_hover_text(if alive {
                                 path.clone()
@@ -155,7 +171,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                 t.path = buf.path.trim().to_string();
                                 t.args = buf.args.trim().to_string();
                             }
-                            state.mark_dirty();
+                            state.mark_dirty(&[id.as_str()]);
                         }
                     }
                     if to_cancel_edit {
@@ -176,8 +192,10 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 if let Some(id) = &selected {
                     if let Some(idx) = state.config.tools.iter().position(|t| &t.id == id) {
                         if idx > 0 {
+                            // 교환되는 두 툴 모두 dirty 로 표시
+                            let other_id = state.config.tools[idx - 1].id.clone();
                             state.config.swap(idx, idx - 1);
-                            state.mark_dirty();
+                            state.mark_dirty(&[id.as_str(), other_id.as_str()]);
                         }
                     }
                 }
@@ -186,8 +204,9 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 if let Some(id) = &selected {
                     if let Some(idx) = state.config.tools.iter().position(|t| &t.id == id) {
                         if idx + 1 < state.config.tools.len() {
+                            let other_id = state.config.tools[idx + 1].id.clone();
                             state.config.swap(idx, idx + 1);
-                            state.mark_dirty();
+                            state.mark_dirty(&[id.as_str(), other_id.as_str()]);
                         }
                     }
                 }
