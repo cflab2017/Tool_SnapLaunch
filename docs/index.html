@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SnapLaunch — 윈도우 우클릭 즐겨찾기 도구 데모</title>
+<meta name="description" content="SnapLaunch: 윈도우 바탕화면/폴더 빈 공간 우클릭에 자주 쓰는 프로그램 즐겨찾기 메뉴를 추가하는 포터블 Rust 툴.">
+<link rel="icon" href="./icon.png">
+<style>
+  /* ──────────────────────────────────────────────────────────────
+     기본 / 타이포그래피
+     ────────────────────────────────────────────────────────────── */
+  * { box-sizing: border-box; }
+  :root {
+    --bg-page: #0f1320;
+    --bg-card: #1b2030;
+    --text: #e6e9f2;
+    --text-dim: #9aa3b8;
+    --accent: #4a90e2;
+    --primary: #28a050;
+    --danger: #c83c3c;
+    --info: #286ec8;
+    --nav: #607084;
+    --utility: #2d9191;
+    --warning: #dc8228;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', '맑은 고딕', sans-serif;
+    color: var(--text);
+    background: radial-gradient(ellipse at top, #1c2138 0%, #0b0f1c 70%);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, kbd {
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    background: rgba(255,255,255,0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     레이아웃 컨테이너
+     ────────────────────────────────────────────────────────────── */
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ──────────────────────────────────────────────────────────────
+     헤더 (히어로)
+     ────────────────────────────────────────────────────────────── */
+  header.hero {
+    padding: 80px 24px 40px;
+    text-align: center;
+  }
+  header.hero img.app-icon {
+    width: 96px;
+    height: 96px;
+    border-radius: 24px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+    margin-bottom: 16px;
+  }
+  header.hero h1 {
+    margin: 0 0 8px;
+    font-size: 56px;
+    letter-spacing: -1px;
+    background: linear-gradient(90deg, #6aa8ff, #b67dff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header.hero p.tagline {
+    margin: 0 auto 24px;
+    max-width: 560px;
+    font-size: 18px;
+    color: var(--text-dim);
+  }
+  header.hero .cta {
+    display: inline-flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .btn {
+    display: inline-block;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-primary { background: linear-gradient(135deg, #4ab070, #2a8a55); box-shadow: 0 6px 16px rgba(42,138,85,.4); }
+  .btn-ghost   { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); }
+  .btn-ghost:hover { background: rgba(255,255,255,.14); }
+
+  /* ──────────────────────────────────────────────────────────────
+     섹션 공통
+     ────────────────────────────────────────────────────────────── */
+  section { padding: 48px 0; }
+  section h2 {
+    text-align: center;
+    font-size: 28px;
+    margin: 0 0 8px;
+  }
+  section .lead {
+    text-align: center;
+    color: var(--text-dim);
+    margin: 0 auto 32px;
+    max-width: 640px;
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     데모 스테이지 (우클릭 → 서브메뉴 펼치기)
+     ────────────────────────────────────────────────────────────── */
+  .stage {
+    position: relative;
+    height: 520px;
+    background: linear-gradient(135deg, #2c5396 0%, #1a3666 50%, #0e1e3b 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.04);
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.06) 0, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(180,80,255,0.10) 0, transparent 50%),
+      linear-gradient(135deg, #2c5396 0%, #1a3666 50%, #0e1e3b 100%);
+  }
+  .stage .scene-caption {
+    position: absolute;
+    left: 24px; top: 20px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    background: rgba(0,0,0,0.25);
+    padding: 6px 12px;
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
+  }
+  .stage .scene-caption .step {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin-right: 8px;
+    font-weight: 600;
+  }
+
+  /* 마우스 커서 (가운데에서 움직임) */
+  .cursor {
+    position: absolute;
+    width: 22px; height: 22px;
+    pointer-events: none;
+    z-index: 10;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    animation: cursor-move 12s infinite ease-in-out;
+  }
+  .cursor svg { width: 100%; height: 100%; }
+  @keyframes cursor-move {
+    0%   { left: 380px; top: 220px; }
+    10%  { left: 380px; top: 220px; }   /* 우클릭 위치 */
+    25%  { left: 420px; top: 260px; }   /* 컨텍스트 메뉴 위 */
+    45%  { left: 480px; top: 320px; }   /* "자주사용하는 툴" 위 hover */
+    65%  { left: 620px; top: 320px; }   /* 서브메뉴로 이동 */
+    80%  { left: 620px; top: 360px; }   /* 두 번째 항목 hover */
+    90%  { left: 620px; top: 360px; }   /* 클릭 */
+    100% { left: 380px; top: 220px; }
+  }
+
+  /* 우클릭 직후의 "퐁" 이펙트 */
+  .click-pulse {
+    position: absolute;
+    left: 380px; top: 220px;
+    width: 0; height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    animation: pulse 12s infinite linear;
+  }
+  @keyframes pulse {
+    0%, 7% { width: 0; height: 0; opacity: 0; }
+    8%     { width: 8px; height: 8px; opacity: 0.8; }
+    14%    { width: 60px; height: 60px; opacity: 0; }
+    100%   { width: 0; height: 0; opacity: 0; }
+  }
+
+  /* 윈도우 11 스타일 컨텍스트 메뉴 */
+  .ctx-menu {
+    position: absolute;
+    left: 400px;
+    top: 240px;
+    background: rgba(245, 246, 250, 0.97);
+    color: #1a1a1f;
+    border-radius: 10px;
+    padding: 6px;
+    min-width: 220px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.05);
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: scale(0.92) translateY(-4px);
+    transform-origin: top left;
+    animation: ctx-show 12s infinite ease-in-out;
+    z-index: 8;
+  }
+  @keyframes ctx-show {
+    0%, 9%   { opacity: 0; transform: scale(0.92) translateY(-4px); }
+    11%      { opacity: 1; transform: scale(1) translateY(0); }
+    93%      { opacity: 1; transform: scale(1) translateY(0); }
+    96%, 100% { opacity: 0; transform: scale(0.96) translateY(-2px); }
+  }
+  .ctx-menu .item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13.5px;
+    cursor: default;
+    user-select: none;
+  }
+  .ctx-menu .item .icon { width: 18px; text-align: center; font-size: 14px; }
+  .ctx-menu .item .arrow { margin-left: auto; opacity: 0.5; }
+  .ctx-menu .sep {
+    height: 1px;
+    background: rgba(0,0,0,0.08);
+    margin: 4px 6px;
+  }
+  /* 'SnapLaunch' 항목이 hover 강조되는 타이밍 */
+  .ctx-menu .item.snap-launch {
+    background: transparent;
+    animation: highlight-snap 12s infinite ease-in-out;
+  }
+  @keyframes highlight-snap {
+    0%, 24%  { background: transparent; }
+    27%, 65% { background: rgba(74,144,226,0.15); }
+    68%, 100% { background: transparent; }
+  }
+
+  /* 서브메뉴 (자주사용하는 툴) */
+  .submenu {
+    position: absolute;
+    left: 622px;
+    top: 296px;
+    background: rgba(245, 246, 250, 0.97);
+    color: #1a1a1f;
+    border-radius: 10px;
+    padding: 6px;
+    min-width: 200px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.05);
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: scale(0.92) translateX(-8px);
+    transform-origin: top left;
+    animation: sub-show 12s infinite ease-in-out;
+    z-index: 9;
+  }
+  @keyframes sub-show {
+    0%, 35%   { opacity: 0; transform: scale(0.92) translateX(-8px); }
+    40%, 88%  { opacity: 1; transform: scale(1) translateX(0); }
+    92%, 100% { opacity: 0; transform: scale(0.96) translateX(-4px); }
+  }
+  .submenu .item.tool-vscode {
+    background: transparent;
+    animation: highlight-tool 12s infinite ease-in-out;
+  }
+  @keyframes highlight-tool {
+    0%, 65% { background: transparent; }
+    68%, 88% { background: rgba(74,144,226,0.15); }
+    90%, 100% { background: transparent; }
+  }
+  .submenu .item.uninstall { color: var(--danger); }
+
+  /* "툴 실행됨" 토스트 */
+  .toast {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    background: rgba(20, 130, 90, 0.95);
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    opacity: 0;
+    transform: translateY(10px);
+    animation: toast 12s infinite ease-in-out;
+  }
+  @keyframes toast {
+    0%, 87%  { opacity: 0; transform: translateY(10px); }
+    90%, 95% { opacity: 1; transform: translateY(0); }
+    98%, 100% { opacity: 0; transform: translateY(10px); }
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     관리 GUI 목업 (정적)
+     ────────────────────────────────────────────────────────────── */
+  .gui-mockup {
+    background: #2a2d35;
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+    overflow: hidden;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .gui-titlebar {
+    background: #1c1f26;
+    color: #d4d8e3;
+    font-size: 13px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .gui-titlebar img { width: 16px; height: 16px; border-radius: 3px; }
+  .gui-titlebar .controls {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    color: #888;
+  }
+  .gui-body { background: #f5f5f7; color: #1a1a1f; padding: 14px 18px; }
+  .gui-body h3 {
+    margin: 6px 0 10px;
+    font-size: 14px;
+    color: #1a1a1f;
+  }
+  .gui-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .gui-table th, .gui-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e4e4e8;
+    text-align: left;
+  }
+  .gui-table th { background: #ecedf1; font-weight: 600; }
+  .gui-table tr.dirty td:nth-child(2),
+  .gui-table tr.dirty td:nth-child(3) { color: #4690d8; }
+  .gui-table tr.dead   td:nth-child(2),
+  .gui-table tr.dead   td:nth-child(3) { color: var(--danger); font-style: italic; }
+  .gui-table .actions { display: flex; gap: 6px; }
+  .gui-table .actions .x { color: var(--danger); cursor: pointer; }
+  .row-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 8px 12px;
+    margin: 16px 0 12px;
+  }
+  .form-grid input[type=text] {
+    border: 1px solid #d0d4dc;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    background: #fff;
+  }
+  .row-add { display: flex; gap: 8px; flex-wrap: wrap; }
+  .control-bar {
+    border-top: 1px solid #e4e4e8;
+    padding-top: 12px;
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .status-ok { color: #1b8050; font-size: 13px; margin-left: 8px; }
+
+  /* 컬러 버튼 칩 — 실제 앱 팔레트와 동일 */
+  .chip {
+    display: inline-block;
+    color: #fff;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12.5px;
+    font-weight: 500;
+    border: none;
+    cursor: default;
+  }
+  .chip.primary  { background: var(--primary); }
+  .chip.danger   { background: var(--danger); }
+  .chip.info     { background: var(--info); }
+  .chip.nav      { background: var(--nav); }
+  .chip.utility  { background: var(--utility); }
+  .chip.warning  { background: var(--warning); }
+  .chip.neutral  { background: #fff; color: #333; border: 1px solid #d0d4dc; }
+
+  /* ──────────────────────────────────────────────────────────────
+     기능 그리드
+     ────────────────────────────────────────────────────────────── */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+    margin-top: 8px;
+  }
+  .feature {
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 22px 22px 20px;
+    transition: transform .15s ease, border-color .15s ease;
+  }
+  .feature:hover {
+    transform: translateY(-3px);
+    border-color: rgba(74,144,226,0.4);
+  }
+  .feature .emoji { font-size: 28px; }
+  .feature h3 { margin: 8px 0 6px; font-size: 16px; }
+  .feature p  { margin: 0; font-size: 14px; color: var(--text-dim); }
+
+  /* ──────────────────────────────────────────────────────────────
+     팔레트 표
+     ────────────────────────────────────────────────────────────── */
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .palette .swatch {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .palette .swatch .bar { height: 8px; border-radius: 4px; margin-bottom: 10px; }
+  .palette .swatch .label { font-weight: 600; font-size: 13px; }
+  .palette .swatch .desc { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ──────────────────────────────────────────────────────────────
+     푸터
+     ────────────────────────────────────────────────────────────── */
+  footer {
+    margin-top: 40px;
+    padding: 32px 24px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  footer .links { margin-top: 10px; display: flex; gap: 16px; justify-content: center; }
+
+  /* ──────────────────────────────────────────────────────────────
+     반응형
+     ────────────────────────────────────────────────────────────── */
+  @media (max-width: 720px) {
+    header.hero h1 { font-size: 40px; }
+    .stage { height: 420px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     HERO
+     ═══════════════════════════════════════════════════════════════ -->
+<header class="hero">
+  <img src="./icon.png" alt="SnapLaunch icon" class="app-icon">
+  <h1>SnapLaunch</h1>
+  <p class="tagline">
+    윈도우 바탕화면 우클릭에 자주 쓰는 프로그램 즐겨찾기 메뉴를 추가하는<br>
+    포터블 · 단일 EXE · 한국어/English 지원 · 관리자 권한 불필요
+  </p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/cflab2017/Tool_SnapLaunch/releases/download/v1.0.0/snap-launch.exe">
+      📥 v1.0.0 다운로드 (3.4 MB)
+    </a>
+    <a class="btn btn-ghost" href="https://github.com/cflab2017/Tool_SnapLaunch">
+      ⭐ GitHub
+    </a>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     데모 (애니메이션)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="wrap">
+  <h2>1초만에 이해하기</h2>
+  <p class="lead">
+    아래 영역에서 우클릭 → "자주사용하는 툴" → 등록한 앱 클릭의 흐름이 12초 주기로 반복됩니다.
+  </p>
+
+  <div class="stage">
+    <div class="scene-caption">
+      <span class="step">DEMO</span>바탕화면 우클릭 → 자주사용하는 툴 → 앱 실행
+    </div>
+
+    <!-- 우클릭 확산 효과 -->
+    <div class="click-pulse"></div>
+
+    <!-- 컨텍스트 메뉴 (윈도우 11 스타일) -->
+    <div class="ctx-menu">
+      <div class="item"><span class="icon">🔄</span>새로고침</div>
+      <div class="item"><span class="icon">📋</span>붙여넣기</div>
+      <div class="item"><span class="icon">📂</span>새로 만들기<span class="arrow">▶</span></div>
+      <div class="sep"></div>
+      <div class="item snap-launch">
+        <span class="icon">🔧</span>자주사용하는 툴<span class="arrow">▶</span>
+      </div>
+      <div class="sep"></div>
+      <div class="item"><span class="icon">⚙️</span>디스플레이 설정</div>
+    </div>
+
+    <!-- 서브메뉴 (SnapLaunch 등록 툴 목록) -->
+    <div class="submenu">
+      <div class="item"><span class="icon">⭐</span>Notepad++</div>
+      <div class="item tool-vscode"><span class="icon">⭐</span>VS Code</div>
+      <div class="item"><span class="icon">⭐</span>계산기</div>
+      <div class="sep"></div>
+      <div class="item"><span class="icon">➕</span>툴 추가/관리...</div>
+      <div class="item uninstall"><span class="icon">❌</span>Uninstall</div>
+    </div>
+
+    <!-- 마우스 커서 -->
+    <div class="cursor">
+      <svg viewBox="0 0 24 24" fill="white" stroke="black" stroke-width="1.5">
+        <path d="M3 2 L3 18 L7 14 L9.5 20 L12 19 L9.5 13 L15 13 Z" />
+      </svg>
+    </div>
+
+    <!-- 실행 토스트 -->
+    <div class="toast">✅ VS Code 실행 완료</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     관리 GUI 목업
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="wrap">
+  <h2>관리 창</h2>
+  <p class="lead">
+    툴 추가/편집/순서변경, 한·영 전환, 메뉴 설치/제거 모두 한 창에서. 변경된 행은 옅은 파랑, 죽은 경로는 빨강으로 즉시 표시됩니다.
+  </p>
+
+  <div class="gui-mockup">
+    <div class="gui-titlebar">
+      <img src="./icon.png" alt="">
+      <span>🔧 자주사용하는 툴 관리   ·   v1.0.0   ·   Joseph.han · coding-now.com</span>
+      <span class="controls">─ □ ✕</span>
+    </div>
+
+    <div class="gui-body">
+      <!-- 언어 라디오 -->
+      <div style="margin-bottom: 12px; font-size: 13px;">
+        언어: &nbsp;◉ 한국어 &nbsp;&nbsp; ○ English
+      </div>
+
+      <h3>등록된 툴 목록</h3>
+      <table class="gui-table">
+        <thead>
+          <tr><th>순서</th><th>이름</th><th>경로</th><th>인자</th><th>작업</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Notepad++</td><td>C:\Program Files\Notepad++\notepad++.exe</td><td></td><td class="actions">✏ <span class="x">❌</span></td></tr>
+          <tr class="dirty"><td>2</td><td>● VS Code</td><td>C:\Users\user\AppData\Local\Programs\Microsoft VS Code\Code.exe</td><td></td><td class="actions">✏ <span class="x">❌</span></td></tr>
+          <tr><td>3</td><td>계산기</td><td>calc.exe</td><td></td><td class="actions">✏ <span class="x">❌</span></td></tr>
+          <tr class="dead"><td>4</td><td>⚠ OldTool</td><td>D:\Removed\old.exe</td><td></td><td class="actions">✏ <span class="x">❌</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="row-buttons">
+        <button class="chip nav">🔼 위로</button>
+        <button class="chip nav">🔽 아래로</button>
+        <button class="chip info">🔄 메뉴 갱신 (변경됨)</button>
+      </div>
+
+      <h3>➕ 새 툴 추가</h3>
+      <div class="form-grid">
+        <label>이름:</label>
+        <input type="text" placeholder="컨텍스트 메뉴에 표시될 이름">
+        <label>경로:</label>
+        <input type="text" placeholder="C:\... 또는 PATH 의 명령 (calc.exe)">
+        <label>인자:</label>
+        <input type="text" placeholder="공백 구분, 선택">
+      </div>
+      <div class="row-add">
+        <button class="chip utility">📁 찾아보기</button>
+        <button class="chip primary">➕ 추가</button>
+        <button class="chip warning">입력 초기화</button>
+      </div>
+
+      <div class="control-bar">
+        <button class="chip primary">📥 마우스 오른쪽 메뉴 설치</button>
+        <button class="chip danger">📤 Uninstall</button>
+        <span class="status-ok">✅ 컨텍스트 메뉴가 설치되어 있습니다.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     기능 그리드
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="wrap">
+  <h2>주요 기능</h2>
+  <p class="lead">매 클릭마다 의도가 한눈에 보이도록 색·강조·툴팁을 세심하게 분리했습니다.</p>
+
+  <div class="features">
+    <div class="feature">
+      <div class="emoji">🚀</div>
+      <h3>단일 EXE · 포터블</h3>
+      <p>3.4 MB Rust 빌드. 설치 과정 없음, USB 에 담아 옮겨도 동작.</p>
+    </div>
+    <div class="feature">
+      <div class="emoji">🔐</div>
+      <h3>관리자 권한 불필요</h3>
+      <p>HKEY_CURRENT_USER 만 사용. 회사 PC 에서도 안전하게 설치 가능.</p>
+    </div>
+    <div class="feature">
+      <div class="emoji">🌐</div>
+      <h3>한국어 / English</h3>
+      <p>GUI 라디오로 즉시 전환. 우클릭 메뉴 텍스트도 같이 따라옴.</p>
+    </div>
+    <div class="feature">
+      <div class="emoji">🎨</div>
+      <h3>의미별 컬러 버튼</h3>
+      <p>녹(주요), 빨(파괴), 파(동기화), 슬레이트, 틸, 앰버 — 헷갈리지 않게.</p>
+    </div>
+    <div class="feature">
+      <div class="emoji">✨</div>
+      <h3>변경 행 강조</h3>
+      <p>추가/편집/이동한 행이 옅은 파랑 ● 으로 표시 → 메뉴 갱신 시 클리어.</p>
+    </div>
+    <div class="feature">
+      <div class="emoji">⚠</div>
+      <h3>죽은 경로 감지</h3>
+      <p>등록한 EXE 가 사라지면 빨갛게 표시. 메뉴 클릭 시 자동으로 제거 제안.</p>
+    </div>
+    <div class="feature">
+      <div class="emoji">💬</div>
+      <h3>모든 위젯 툴팁</h3>
+      <p>버튼·필드·라디오 위에 호버하면 한/영으로 설명. PATH 검색 힌트까지.</p>
+    </div>
+    <div class="feature">
+      <div class="emoji">🛟</div>
+      <h3>비상 복구 .bat</h3>
+      <p>설치 시 EXE 옆에 자동 생성. snap-launch.exe 가 삭제돼도 메뉴 정리 가능.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     팔레트
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="wrap">
+  <h2>버튼 색 팔레트</h2>
+  <p class="lead">모든 색은 <code>src/ui/style.rs</code> 한 곳에서 관리됩니다.</p>
+  <div class="palette">
+    <div class="swatch"><div class="bar" style="background: var(--primary)"></div><div class="label">PRIMARY</div><div class="desc">추가 · 설치 · 저장</div></div>
+    <div class="swatch"><div class="bar" style="background: var(--danger)"></div><div class="label">DANGER</div><div class="desc">Uninstall · 행 삭제</div></div>
+    <div class="swatch"><div class="bar" style="background: var(--info)"></div><div class="label">INFO</div><div class="desc">메뉴 갱신</div></div>
+    <div class="swatch"><div class="bar" style="background: var(--nav)"></div><div class="label">NAV</div><div class="desc">위로 · 아래로</div></div>
+    <div class="swatch"><div class="bar" style="background: var(--utility)"></div><div class="label">UTILITY</div><div class="desc">찾아보기</div></div>
+    <div class="swatch"><div class="bar" style="background: var(--warning)"></div><div class="label">WARNING</div><div class="desc">입력 초기화</div></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     설치 / 사용 안내
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="wrap">
+  <h2>30 초 만에 시작하기</h2>
+  <p class="lead">압축 해제도, 설치 마법사도 없습니다.</p>
+  <ol style="max-width: 680px; margin: 0 auto; font-size: 15px; line-height: 2;">
+    <li><a href="https://github.com/cflab2017/Tool_SnapLaunch/releases/download/v1.0.0/snap-launch.exe">snap-launch.exe</a> 를 원하는 폴더(예: <code>C:\Tools\SnapLaunch\</code>) 에 둔다.</li>
+    <li>더블클릭 → 관리 창 열림.</li>
+    <li>자주 쓰는 EXE 를 <strong>📁 찾아보기</strong> 또는 <strong>드래그 앤 드롭</strong> 으로 등록.</li>
+    <li><strong>📥 마우스 오른쪽 메뉴 설치</strong> 클릭.</li>
+    <li>바탕화면이나 폴더 빈 공간을 우클릭 → 끝.</li>
+  </ol>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     푸터
+     ═══════════════════════════════════════════════════════════════ -->
+<footer>
+  <div>Made with 🦀 Rust + egui · MIT License</div>
+  <div style="margin-top: 4px;"><strong>Joseph.han</strong> · <a href="https://coding-now.com">coding-now.com</a></div>
+  <div class="links">
+    <a href="https://github.com/cflab2017/Tool_SnapLaunch">GitHub</a>
+    <a href="https://github.com/cflab2017/Tool_SnapLaunch/releases">Releases</a>
+    <a href="https://github.com/cflab2017/Tool_SnapLaunch/blob/main/README.md">README</a>
+  </div>
+</footer>
+
+</body>
+</html>

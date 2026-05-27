@@ -20,6 +20,16 @@ Windows 바탕화면/폴더 빈 공간 **우클릭 메뉴**에 자주 쓰는 프
 
 ---
 
+## 🎬 데모 페이지
+
+- **GitHub Pages**: https://cflab2017.github.io/Tool_SnapLaunch/ *(저장소 Settings → Pages 에서 main 브랜치 `/docs` 활성화 필요)*
+- **즉시 미리보기**: [htmlpreview 로 열기](https://htmlpreview.github.io/?https://github.com/cflab2017/Tool_SnapLaunch/blob/main/docs/index.html)
+- **로컬**: `docs/index.html` 를 브라우저로 열어도 동작합니다.
+
+우클릭 → "자주사용하는 툴" → 앱 실행 흐름이 12 초 주기로 자동 반복됩니다.
+
+---
+
 ## 최신 버전 다운로드
 
 | 버전 | 배포일 | 설치 파일 | 소스코드 |
