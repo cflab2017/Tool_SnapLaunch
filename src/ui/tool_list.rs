@@ -198,7 +198,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
         ui.add_enabled_ui(enabled, |ui| {
             let s = state.s();
             if ui
-                .button(s.btn_move_up)
+                .add(style::nav(s.btn_move_up))
                 .on_hover_text(s.tip_move_up)
                 .clicked()
             {
@@ -214,7 +214,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 }
             }
             if ui
-                .button(state.s().btn_move_down)
+                .add(style::nav(state.s().btn_move_down))
                 .on_hover_text(state.s().tip_move_down)
                 .clicked()
             {

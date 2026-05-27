@@ -12,6 +12,9 @@ use egui::{Button, Color32, RichText};
 pub const PRIMARY: Color32 = Color32::from_rgb(40, 160, 80);   // 녹색
 pub const DANGER: Color32 = Color32::from_rgb(200, 60, 60);    // 빨강
 pub const INFO: Color32 = Color32::from_rgb(40, 110, 200);     // 파랑
+pub const NAV: Color32 = Color32::from_rgb(96, 112, 132);      // 슬레이트 — 위/아래 같은 짝지은 네비
+pub const UTILITY: Color32 = Color32::from_rgb(45, 145, 145);  // 틸 — 파일 선택 등 보조 액션
+pub const WARNING: Color32 = Color32::from_rgb(220, 130, 40);  // 앰버 — 리셋(되돌리기) 경고
 pub const DANGER_TEXT: Color32 = Color32::from_rgb(200, 60, 60); // 아이콘 전용 빨강
 
 /// 흰 글자 + 녹색 배경 버튼.
@@ -27,6 +30,21 @@ pub fn danger<'a>(label: &str) -> Button<'a> {
 /// 흰 글자 + 파랑 배경 버튼.
 pub fn info<'a>(label: &str) -> Button<'a> {
     Button::new(RichText::new(label.to_owned()).color(Color32::WHITE)).fill(INFO)
+}
+
+/// 흰 글자 + 슬레이트 배경 — 위/아래 같은 네비게이션.
+pub fn nav<'a>(label: &str) -> Button<'a> {
+    Button::new(RichText::new(label.to_owned()).color(Color32::WHITE)).fill(NAV)
+}
+
+/// 흰 글자 + 틸 배경 — 파일 선택 등 보조 유틸리티.
+pub fn utility<'a>(label: &str) -> Button<'a> {
+    Button::new(RichText::new(label.to_owned()).color(Color32::WHITE)).fill(UTILITY)
+}
+
+/// 흰 글자 + 앰버 배경 — 입력 리셋 같은 경고성(되돌리기) 액션.
+pub fn warning<'a>(label: &str) -> Button<'a> {
+    Button::new(RichText::new(label.to_owned()).color(Color32::WHITE)).fill(WARNING)
 }
 
 /// 채움 없이 빨간 글자만 사용하는 작은 아이콘 버튼 (예: 행 ❌).

@@ -31,7 +31,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 )
                 .on_hover_text(s.tip_field_path);
                 if ui
-                    .button(s.btn_browse)
+                    .add(style::utility(s.btn_browse))
                     .on_hover_text(s.tip_browse)
                     .clicked()
                 {
@@ -74,7 +74,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             state.mark_dirty(&[new_id.as_str()]);
         }
         if ui
-            .button(s.btn_clear)
+            .add(style::warning(s.btn_clear))
             .on_hover_text(s.tip_clear_form)
             .clicked()
         {
