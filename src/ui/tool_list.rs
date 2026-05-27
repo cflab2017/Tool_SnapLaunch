@@ -86,10 +86,18 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                 ui.text_edit_singleline(&mut buf.path);
                                 ui.text_edit_singleline(&mut buf.args);
                                 ui.horizontal(|ui| {
-                                    if ui.add(style::primary(s.btn_save)).clicked() {
+                                    if ui
+                                        .add(style::primary(s.btn_save))
+                                        .on_hover_text(s.tip_save_edit)
+                                        .clicked()
+                                    {
                                         to_save_edit = Some(id.clone());
                                     }
-                                    if ui.button(s.btn_cancel).clicked() {
+                                    if ui
+                                        .button(s.btn_cancel)
+                                        .on_hover_text(s.tip_cancel_edit)
+                                        .clicked()
+                                    {
                                         to_cancel_edit = true;
                                     }
                                 });
@@ -188,7 +196,12 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
         let enabled = selected.is_some() && state.config.tools.len() > 1;
 
         ui.add_enabled_ui(enabled, |ui| {
-            if ui.button(state.s().btn_move_up).clicked() {
+            let s = state.s();
+            if ui
+                .button(s.btn_move_up)
+                .on_hover_text(s.tip_move_up)
+                .clicked()
+            {
                 if let Some(id) = &selected {
                     if let Some(idx) = state.config.tools.iter().position(|t| &t.id == id) {
                         if idx > 0 {
@@ -200,7 +213,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                     }
                 }
             }
-            if ui.button(state.s().btn_move_down).clicked() {
+            if ui
+                .button(state.s().btn_move_down)
+                .on_hover_text(state.s().tip_move_down)
+                .clicked()
+            {
                 if let Some(id) = &selected {
                     if let Some(idx) = state.config.tools.iter().position(|t| &t.id == id) {
                         if idx + 1 < state.config.tools.len() {

@@ -184,11 +184,14 @@ impl eframe::App for SnapLaunchApp {
 
 /// 상단 언어 선택 바.
 fn language_bar(ui: &mut egui::Ui, state: &mut AppState) {
+    let s = state.s();
     ui.horizontal(|ui| {
-        ui.label(state.s().lang_label);
+        ui.label(s.lang_label).on_hover_text(s.tip_lang_radio);
         let mut lang = state.config.language;
-        ui.radio_value(&mut lang, Language::Korean, state.s().lang_korean);
-        ui.radio_value(&mut lang, Language::English, state.s().lang_english);
+        ui.radio_value(&mut lang, Language::Korean, s.lang_korean)
+            .on_hover_text(s.tip_lang_radio);
+        ui.radio_value(&mut lang, Language::English, s.lang_english)
+            .on_hover_text(s.tip_lang_radio);
         if lang != state.config.language {
             state.config.language = lang;
             state.save_language();

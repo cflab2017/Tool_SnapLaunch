@@ -18,20 +18,25 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
         .num_columns(2)
         .spacing([8.0, 6.0])
         .show(ui, |ui| {
-            ui.label(s.field_name);
-            ui.text_edit_singleline(&mut state.form.name);
+            ui.label(s.field_name).on_hover_text(s.tip_field_name);
+            ui.text_edit_singleline(&mut state.form.name)
+                .on_hover_text(s.tip_field_name);
             ui.end_row();
 
-            ui.label(s.field_path);
+            ui.label(s.field_path).on_hover_text(s.tip_field_path);
             ui.horizontal(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut state.form.path)
                         .desired_width(ui.available_width() - 110.0),
-                );
-                if ui.button(s.btn_browse).clicked() {
+                )
+                .on_hover_text(s.tip_field_path);
+                if ui
+                    .button(s.btn_browse)
+                    .on_hover_text(s.tip_browse)
+                    .clicked()
+                {
                     if let Some(picked) = pick_executable(s) {
                         let picked_str = picked.to_string_lossy().to_string();
-                        // 이름이 비어 있으면 파일명을 자동 채움
                         if state.form.name.trim().is_empty() {
                             state.form.name = file_stem_name(&picked);
                         }
@@ -41,15 +46,20 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             });
             ui.end_row();
 
-            ui.label(s.field_args);
-            ui.text_edit_singleline(&mut state.form.args);
+            ui.label(s.field_args).on_hover_text(s.tip_field_args);
+            ui.text_edit_singleline(&mut state.form.args)
+                .on_hover_text(s.tip_field_args);
             ui.end_row();
         });
 
     ui.add_space(6.0);
     ui.horizontal(|ui| {
         let can_add = !state.form.name.trim().is_empty() && !state.form.path.trim().is_empty();
-        if ui.add_enabled(can_add, style::primary(s.btn_add)).clicked() {
+        if ui
+            .add_enabled(can_add, style::primary(s.btn_add))
+            .on_hover_text(s.tip_add)
+            .clicked()
+        {
             // 새로 생성된 툴의 ID 를 받아서 dirty 표시 대상으로 등록
             let new_id = state
                 .config
@@ -63,7 +73,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             state.form.clear();
             state.mark_dirty(&[new_id.as_str()]);
         }
-        if ui.button(s.btn_clear).clicked() {
+        if ui
+            .button(s.btn_clear)
+            .on_hover_text(s.tip_clear_form)
+            .clicked()
+        {
             state.form.clear();
         }
         ui.label(

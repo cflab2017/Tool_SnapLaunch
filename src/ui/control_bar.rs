@@ -11,7 +11,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
     let s = state.s();
     ui.separator();
     ui.horizontal(|ui| {
-        if ui.add(style::primary(s.btn_install)).clicked() {
+        if ui
+            .add(style::primary(s.btn_install))
+            .on_hover_text(s.tip_install)
+            .clicked()
+        {
             match registry::install() {
                 Ok(_) => {
                     msgbox::info(s.install_success, "SnapLaunch");
@@ -26,7 +30,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 }
             }
         }
-        if ui.add(style::danger(s.btn_uninstall)).clicked() {
+        if ui
+            .add(style::danger(s.btn_uninstall))
+            .on_hover_text(s.tip_uninstall)
+            .clicked()
+        {
             if msgbox::confirm(s.uninstall_confirm, "SnapLaunch") {
                 match registry::uninstall() {
                     Ok(_) => {
@@ -90,7 +98,7 @@ pub fn refresh_button(ui: &mut egui::Ui, state: &mut AppState) {
     } else {
         style::info(s.btn_refresh)
     };
-    if ui.add(btn).clicked() {
+    if ui.add(btn).on_hover_text(s.tip_refresh).clicked() {
         match registry::install() {
             Ok(_) => {
                 msgbox::info(s.refresh_success, "SnapLaunch");
