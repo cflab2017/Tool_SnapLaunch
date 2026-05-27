@@ -11,6 +11,21 @@ use crate::msgbox;
 use crate::registry;
 use crate::ui;
 
+/// 빌드 시점의 Cargo 패키지 버전 (Cargo.toml 의 version)
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// 제작자 표기
+const AUTHOR: &str = "Joseph.han";
+/// 제작자 웹사이트
+const WEBSITE: &str = "coding-now.com";
+
+/// 창 제목을 "<로컬라이즈 제목>  ·  v<버전>  ·  <제작자> · <웹사이트>" 형태로 조립한다.
+fn build_window_title(s: &Strings) -> String {
+    format!(
+        "{}   ·   v{}   ·   {} · {}",
+        s.window_title, VERSION, AUTHOR, WEBSITE
+    )
+}
+
 /// 새 툴 추가 폼이 보유하는 입력 상태.
 #[derive(Default)]
 pub struct ToolFormState {
@@ -142,9 +157,9 @@ impl eframe::App for SnapLaunchApp {
         handle_dropped_files(ctx, &mut self.state);
 
         // 현재 언어에 따라 창 제목을 매 프레임 동기화 (라디오 변경 즉시 반영)
-        ctx.send_viewport_cmd(egui::ViewportCommand::Title(
-            self.state.s().window_title.to_string(),
-        ));
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(build_window_title(
+            self.state.s(),
+        )));
 
         egui::CentralPanel::default().show(ctx, |ui| {
             language_bar(ui, &mut self.state);
@@ -251,12 +266,12 @@ fn load_icon() -> Option<egui::IconData> {
 pub fn run() -> eframe::Result<()> {
     // 시작 시 저장된 언어로 초기 창 제목을 설정한다 (이후 매 프레임 동기화).
     let initial_lang = ToolsConfig::load().language;
-    let initial_title = i18n::strings(initial_lang).window_title;
+    let initial_title = build_window_title(i18n::strings(initial_lang));
 
     let mut viewport = egui::ViewportBuilder::default()
         .with_title(initial_title)
-        .with_inner_size([640.0, 600.0])
-        .with_min_inner_size([520.0, 420.0]);
+        .with_inner_size([720.0, 600.0])
+        .with_min_inner_size([560.0, 420.0]);
 
     if let Some(icon) = load_icon() {
         viewport = viewport.with_icon(icon);
