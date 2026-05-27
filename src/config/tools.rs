@@ -6,6 +6,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::i18n::Language;
+
 /// 설정 파일명 (EXE와 동일 디렉토리에 위치)
 pub const CONFIG_FILE_NAME: &str = "snap-launch-tools.json";
 
@@ -31,6 +33,9 @@ pub struct Tool {
 /// tools.json 의 최상위 구조
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ToolsConfig {
+    /// UI / 컨텍스트 메뉴 언어. 기본은 Korean.
+    #[serde(default)]
+    pub language: Language,
     #[serde(default)]
     pub tools: Vec<Tool>,
 }

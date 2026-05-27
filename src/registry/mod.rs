@@ -16,8 +16,7 @@ pub const DESKTOP_ROOT: &str = r"Software\Classes\DesktopBackground\Shell\SnapLa
 /// 폴더 배경(탐색기 빈 공간) 우클릭 메뉴의 루트 경로 (HKCU 하위)
 pub const DIRECTORY_ROOT: &str = r"Software\Classes\Directory\Background\Shell\SnapLaunch";
 
-/// 컨텍스트 메뉴의 최상위 표시 텍스트
-pub const MENU_LABEL: &str = "자주사용하는 툴";
+// 컨텍스트 메뉴 텍스트는 사용자가 선택한 언어에 따라 i18n::Strings 에서 가져온다.
 
 /// snap-launch.exe 가 통째로 삭제된 경우를 위한 비상 복구 배치 파일 이름.
 /// EXE 옆에 설치 시 함께 생성되며, 두 HKCU 키를 강제로 삭제한다.

@@ -4,6 +4,7 @@
 use eframe::egui;
 
 use crate::config::ToolsConfig;
+use crate::i18n::{self, Language, Strings};
 use crate::msgbox;
 use crate::registry;
 use crate::ui;
@@ -79,15 +80,30 @@ impl AppState {
         self.registered_exe_path = registry::registered_exe_path();
     }
 
+    /// 현재 언어에 해당하는 문자열 테이블.
+    pub fn s(&self) -> &'static Strings {
+        i18n::strings(self.config.language)
+    }
+
     /// 툴 목록이 변경되었음을 표시하고 디스크에 저장한다.
     pub fn mark_dirty(&mut self) {
         if let Err(e) = self.config.save() {
             msgbox::error(
-                &format!("툴 목록 저장에 실패했습니다.\n\n{}", e),
+                &format!("{}{}", self.s().save_error_prefix, e),
                 "SnapLaunch",
             );
         }
         self.dirty_since_last_install = true;
+    }
+
+    /// 언어만 변경되었을 때 호출. UI 갱신을 위해 즉시 저장하지만 dirty 플래그는 올리지 않는다.
+    pub fn save_language(&mut self) {
+        if let Err(e) = self.config.save() {
+            msgbox::error(
+                &format!("{}{}", self.s().save_error_prefix, e),
+                "SnapLaunch",
+            );
+        }
     }
 }
 
@@ -109,8 +125,14 @@ impl eframe::App for SnapLaunchApp {
         // 드래그 앤 드롭 처리: EXE 류 파일이 떨어지면 폼에 자동 입력
         handle_dropped_files(ctx, &mut self.state);
 
+        // 현재 언어에 따라 창 제목을 매 프레임 동기화 (라디오 변경 즉시 반영)
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(
+            self.state.s().window_title.to_string(),
+        ));
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.add_space(4.0);
+            language_bar(ui, &mut self.state);
+            ui.separator();
             ui::tool_list::show(ui, &mut self.state);
             ui.add_space(4.0);
             ui::tool_form::show(ui, &mut self.state);
@@ -126,10 +148,12 @@ impl eframe::App for SnapLaunchApp {
                 .find(&id)
                 .map(|t| t.name.clone())
                 .unwrap_or_else(|| id.clone());
-            if msgbox::confirm(
-                &format!("정말 \"{}\" 툴을 삭제하시겠습니까?", name),
-                "SnapLaunch",
-            ) {
+            let prompt = self
+                .state
+                .s()
+                .delete_confirm_template
+                .replace("{name}", &name);
+            if msgbox::confirm(&prompt, "SnapLaunch") {
                 self.state.config.remove_tool(&id);
                 if self.state.selected_id.as_deref() == Some(id.as_str()) {
                     self.state.selected_id = None;
@@ -140,8 +164,25 @@ impl eframe::App for SnapLaunchApp {
     }
 }
 
+/// 상단 언어 선택 바.
+fn language_bar(ui: &mut egui::Ui, state: &mut AppState) {
+    ui.horizontal(|ui| {
+        ui.label(state.s().lang_label);
+        let mut lang = state.config.language;
+        ui.radio_value(&mut lang, Language::Korean, state.s().lang_korean);
+        ui.radio_value(&mut lang, Language::English, state.s().lang_english);
+        if lang != state.config.language {
+            state.config.language = lang;
+            state.save_language();
+        }
+    });
+}
+
 /// eframe 의 드래그 앤 드롭 이벤트를 검사하여 EXE 류 파일이면 폼을 채운다.
 fn handle_dropped_files(ctx: &egui::Context, state: &mut AppState) {
+    let mut unsupported = false;
+    let mut path_to_set: Option<std::path::PathBuf> = None;
+
     ctx.input(|i| {
         for f in &i.raw.dropped_files {
             if let Some(path) = &f.path {
@@ -152,28 +193,30 @@ fn handle_dropped_files(ctx: &egui::Context, state: &mut AppState) {
                     .to_ascii_lowercase();
 
                 if matches!(ext.as_str(), "exe" | "bat" | "cmd" | "lnk") {
-                    state.form.path = path.to_string_lossy().to_string();
-                    if state.form.name.trim().is_empty() {
-                        state.form.name = crate::config::tools::file_stem_name(path);
-                    }
+                    path_to_set = Some(path.clone());
                 } else {
-                    msgbox::info(
-                        "지원하지 않는 파일 형식입니다.\nEXE / BAT / CMD / LNK 만 끌어다 놓을 수 있습니다.",
-                        "SnapLaunch",
-                    );
+                    unsupported = true;
                 }
             }
         }
     });
+
+    if let Some(path) = path_to_set {
+        state.form.path = path.to_string_lossy().to_string();
+        if state.form.name.trim().is_empty() {
+            state.form.name = crate::config::tools::file_stem_name(&path);
+        }
+    }
+    if unsupported {
+        msgbox::info(state.s().dropped_unsupported, "SnapLaunch");
+    }
 }
 
 /// EXE 에 임베드된 아이콘 PNG 바이트. 런타임에 egui 창 / 작업표시줄에 표시된다.
 const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 /// PNG 바이트를 egui 의 IconData (RGBA 픽셀 + 크기) 로 디코드한다.
-/// 디코드 실패 시 None 을 반환하여 기본 아이콘을 사용한다.
 fn load_icon() -> Option<egui::IconData> {
-    // image 크레이트는 eframe 의 transitive dependency 라 별도 추가 없이 사용 가능
     let img = image::load_from_memory(ICON_PNG).ok()?.into_rgba8();
     let (w, h) = img.dimensions();
     Some(egui::IconData {
@@ -185,10 +228,14 @@ fn load_icon() -> Option<egui::IconData> {
 
 /// GUI 모드 진입점. eframe::run_native 를 호출한다.
 pub fn run() -> eframe::Result<()> {
+    // 시작 시 저장된 언어로 초기 창 제목을 설정한다 (이후 매 프레임 동기화).
+    let initial_lang = ToolsConfig::load().language;
+    let initial_title = i18n::strings(initial_lang).window_title;
+
     let mut viewport = egui::ViewportBuilder::default()
-        .with_title("🔧 자주사용하는 툴 관리")
-        .with_inner_size([640.0, 560.0])
-        .with_min_inner_size([520.0, 400.0]);
+        .with_title(initial_title)
+        .with_inner_size([640.0, 600.0])
+        .with_min_inner_size([520.0, 420.0]);
 
     if let Some(icon) = load_icon() {
         viewport = viewport.with_icon(icon);
@@ -202,7 +249,6 @@ pub fn run() -> eframe::Result<()> {
         "SnapLaunch",
         options,
         Box::new(|cc| {
-            // 한글 표시를 위해 시스템 한글 폰트를 로드 (있을 때만)
             install_korean_font(&cc.egui_ctx);
             Ok(Box::new(SnapLaunchApp::new(cc)))
         }),
@@ -210,7 +256,7 @@ pub fn run() -> eframe::Result<()> {
 }
 
 /// Windows 시스템에 포함된 맑은 고딕 폰트를 등록하여 한글이 깨지지 않게 한다.
-/// 폰트 파일을 찾지 못하면 egui 의 기본 폰트를 그대로 사용한다.
+/// 영어 모드에서도 비용은 동일하며, 한글 → 영문 전환 시 폰트 부재로 인한 ☐ 표시를 방지한다.
 fn install_korean_font(ctx: &egui::Context) {
     let candidates = [
         r"C:\Windows\Fonts\malgun.ttf",

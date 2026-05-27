@@ -5,28 +5,30 @@ use std::path::PathBuf;
 
 use crate::app::AppState;
 use crate::config::tools::file_stem_name;
+use crate::i18n::Strings;
 
 pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
+    let s = state.s();
     ui.separator();
-    ui.heading("➕ 새 툴 추가");
+    ui.heading(s.add_tool_heading);
     ui.add_space(4.0);
 
     egui::Grid::new("add_tool_grid")
         .num_columns(2)
         .spacing([8.0, 6.0])
         .show(ui, |ui| {
-            ui.label("이름:");
+            ui.label(s.field_name);
             ui.text_edit_singleline(&mut state.form.name);
             ui.end_row();
 
-            ui.label("경로:");
+            ui.label(s.field_path);
             ui.horizontal(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut state.form.path)
                         .desired_width(ui.available_width() - 110.0),
                 );
-                if ui.button("📁 찾아보기").clicked() {
-                    if let Some(picked) = pick_executable() {
+                if ui.button(s.btn_browse).clicked() {
+                    if let Some(picked) = pick_executable(s) {
                         let picked_str = picked.to_string_lossy().to_string();
                         // 이름이 비어 있으면 파일명을 자동 채움
                         if state.form.name.trim().is_empty() {
@@ -38,7 +40,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             });
             ui.end_row();
 
-            ui.label("인자:");
+            ui.label(s.field_args);
             ui.text_edit_singleline(&mut state.form.args);
             ui.end_row();
         });
@@ -47,7 +49,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         let can_add = !state.form.name.trim().is_empty() && !state.form.path.trim().is_empty();
         if ui
-            .add_enabled(can_add, egui::Button::new("➕ 추가"))
+            .add_enabled(can_add, egui::Button::new(s.btn_add))
             .clicked()
         {
             state.config.add_tool(
@@ -58,11 +60,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             state.form.clear();
             state.mark_dirty();
         }
-        if ui.button("입력 초기화").clicked() {
+        if ui.button(s.btn_clear).clicked() {
             state.form.clear();
         }
         ui.label(
-            egui::RichText::new("(EXE 파일을 창에 끌어다 놓으면 자동으로 채워집니다)")
+            egui::RichText::new(s.dnd_hint)
                 .small()
                 .color(egui::Color32::DARK_GRAY),
         );
@@ -70,10 +72,10 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
 }
 
 /// EXE 전용 네이티브 파일 선택 다이얼로그.
-fn pick_executable() -> Option<PathBuf> {
+fn pick_executable(s: &Strings) -> Option<PathBuf> {
     rfd::FileDialog::new()
-        .add_filter("실행 파일", &["exe", "bat", "cmd", "lnk"])
-        .add_filter("모든 파일", &["*"])
-        .set_title("실행할 프로그램 선택")
+        .add_filter(s.file_dialog_filter_exe, &["exe", "bat", "cmd", "lnk"])
+        .add_filter(s.file_dialog_filter_all, &["*"])
+        .set_title(s.file_dialog_title)
         .pick_file()
 }

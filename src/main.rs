@@ -1,47 +1,47 @@
 // SnapLaunch: Windows 컨텍스트 메뉴 즐겨찾기 툴.
 // 하나의 EXE 가 커맨드라인 인자에 따라 서로 다른 모드로 동작한다.
 
-// 콘솔 창이 뜨지 않도록 windows 서브시스템 사용 (GUI / launch 모드 모두에서 검은 창이 보이지 않음)
+// 콘솔 창이 뜨지 않도록 windows 서브시스템 사용
 #![windows_subsystem = "windows"]
 
 mod app;
 mod config;
+mod i18n;
 mod launcher;
 mod msgbox;
 mod path_util;
 mod registry;
 mod ui;
 
+use crate::config::ToolsConfig;
+
 fn main() {
     // args[0] = EXE 경로, args[1] = 모드
     let args: Vec<String> = std::env::args().collect();
     let mode = args.get(1).map(|s| s.as_str()).unwrap_or("");
 
+    // 모든 모드에서 저장된 언어 설정으로 메시지를 표시한다.
+    let s = i18n::strings(ToolsConfig::load().language);
+
     match mode {
         // 컨텍스트 메뉴 설치
         "install" => match registry::install() {
-            Ok(_) => msgbox::info(
-                "컨텍스트 메뉴가 설치되었습니다.\n바탕화면이나 폴더 빈 공간에서 우클릭하여 확인하세요.",
-                "SnapLaunch",
-            ),
+            Ok(_) => msgbox::info(s.install_success, "SnapLaunch"),
             Err(e) => msgbox::error(
-                &format!("메뉴 설치 중 오류가 발생했습니다.\n\n{}", e),
+                &format!("{}{}", s.install_error_prefix, e),
                 "SnapLaunch",
             ),
         },
         // 컨텍스트 메뉴 제거 (확인 → 삭제)
         "uninstall" => {
-            if msgbox::confirm(
-                "컨텍스트 메뉴를 제거하시겠습니까?\n(등록된 툴 목록 파일은 그대로 유지됩니다.)",
-                "SnapLaunch",
-            ) {
+            if msgbox::confirm(s.uninstall_confirm, "SnapLaunch") {
                 match registry::uninstall() {
                     Ok(_) => {
-                        msgbox::info("컨텍스트 메뉴가 제거되었습니다.", "SnapLaunch");
+                        msgbox::info(s.uninstall_success, "SnapLaunch");
                     }
                     Err(e) => {
                         msgbox::error(
-                            &format!("메뉴 제거 중 오류가 발생했습니다.\n\n{}", e),
+                            &format!("{}{}", s.uninstall_error_prefix, e),
                             "SnapLaunch",
                         );
                     }
@@ -53,10 +53,7 @@ fn main() {
             let tool_id = match args.get(2) {
                 Some(id) if !id.trim().is_empty() => id.clone(),
                 _ => {
-                    msgbox::error(
-                        "launch 인자에 실행할 툴 ID 가 지정되지 않았습니다.",
-                        "SnapLaunch",
-                    );
+                    msgbox::error(s.launch_no_id, "SnapLaunch");
                     std::process::exit(1);
                 }
             };
@@ -66,7 +63,7 @@ fn main() {
         "launch-manage" | "" => {
             if let Err(e) = app::run() {
                 msgbox::error(
-                    &format!("관리 창을 시작할 수 없습니다.\n\n{}", e),
+                    &format!("{}{}", s.launch_cant_start_gui_prefix, e),
                     "SnapLaunch",
                 );
             }
@@ -75,7 +72,7 @@ fn main() {
         _ => {
             if let Err(e) = app::run() {
                 msgbox::error(
-                    &format!("관리 창을 시작할 수 없습니다.\n\n{}", e),
+                    &format!("{}{}", s.launch_cant_start_gui_prefix, e),
                     "SnapLaunch",
                 );
             }

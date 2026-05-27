@@ -11,16 +11,15 @@ const DEAD_COLOR: Color32 = Color32::from_rgb(200, 60, 60);
 
 /// 툴 목록 영역을 그린다.
 pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
-    ui.heading("등록된 툴 목록");
+    let s = state.s();
+    ui.heading(s.registered_tools_heading);
     ui.add_space(4.0);
 
     if state.config.tools.is_empty() {
         ui.label(
-            RichText::new(
-                "아직 등록된 툴이 없습니다. 아래 \"새 툴 추가\" 영역에서 추가하거나, EXE 파일을 창에 끌어다 놓으세요.",
-            )
-            .italics()
-            .color(egui::Color32::DARK_GRAY),
+            RichText::new(s.empty_list_message)
+                .italics()
+                .color(egui::Color32::DARK_GRAY),
         );
         ui.add_space(8.0);
         return;
@@ -36,11 +35,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 .spacing([8.0, 6.0])
                 .show(ui, |ui| {
                     // 헤더
-                    ui.label(RichText::new("순서").strong());
-                    ui.label(RichText::new("이름").strong());
-                    ui.label(RichText::new("경로").strong());
-                    ui.label(RichText::new("인자").strong());
-                    ui.label(RichText::new("작업").strong());
+                    ui.label(RichText::new(s.col_order).strong());
+                    ui.label(RichText::new(s.col_name).strong());
+                    ui.label(RichText::new(s.col_path).strong());
+                    ui.label(RichText::new(s.col_args).strong());
+                    ui.label(RichText::new(s.col_actions).strong());
                     ui.end_row();
 
                     // 순서대로 표시되도록 미리 정렬
@@ -84,10 +83,10 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                 ui.text_edit_singleline(&mut buf.path);
                                 ui.text_edit_singleline(&mut buf.args);
                                 ui.horizontal(|ui| {
-                                    if ui.button("💾 저장").clicked() {
+                                    if ui.button(s.btn_save).clicked() {
                                         to_save_edit = Some(id.clone());
                                     }
-                                    if ui.button("취소").clicked() {
+                                    if ui.button(s.btn_cancel).clicked() {
                                         to_cancel_edit = true;
                                     }
                                 });
@@ -112,20 +111,15 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                     .color(DEAD_COLOR)
                                     .italics()
                             };
-                            ui.label(path_text)
-                                .on_hover_text(if alive {
-                                    path.clone()
-                                } else {
-                                    format!("파일 없음: {}", path)
-                                });
+                            ui.label(path_text).on_hover_text(if alive {
+                                path.clone()
+                            } else {
+                                format!("{}{}", s.missing_file_prefix, path)
+                            });
                             ui.label(truncate_middle(&args, 20));
 
                             ui.horizontal(|ui| {
-                                if ui
-                                    .button("✏")
-                                    .on_hover_text("이 툴 편집")
-                                    .clicked()
-                                {
+                                if ui.button("✏").on_hover_text(s.edit_tooltip).clicked() {
                                     state.editing = Some(EditingBuffer {
                                         id: id.clone(),
                                         name: name.clone(),
@@ -134,11 +128,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                     });
                                     to_select = Some(id.clone());
                                 }
-                                if ui
-                                    .button("❌")
-                                    .on_hover_text("이 툴 삭제")
-                                    .clicked()
-                                {
+                                if ui.button("❌").on_hover_text(s.delete_tooltip).clicked() {
                                     state.pending_delete_id = Some(id.clone());
                                 }
                             });
@@ -177,7 +167,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
         let enabled = selected.is_some() && state.config.tools.len() > 1;
 
         ui.add_enabled_ui(enabled, |ui| {
-            if ui.button("🔼 위로").clicked() {
+            if ui.button(state.s().btn_move_up).clicked() {
                 if let Some(id) = &selected {
                     if let Some(idx) = state.config.tools.iter().position(|t| &t.id == id) {
                         if idx > 0 {
@@ -187,7 +177,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                     }
                 }
             }
-            if ui.button("🔽 아래로").clicked() {
+            if ui.button(state.s().btn_move_down).clicked() {
                 if let Some(id) = &selected {
                     if let Some(idx) = state.config.tools.iter().position(|t| &t.id == id) {
                         if idx + 1 < state.config.tools.len() {
@@ -202,7 +192,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
         if let Some(id) = &state.selected_id {
             if let Some(t) = state.config.find(id) {
                 ui.label(
-                    RichText::new(format!("선택됨: {}", t.name))
+                    RichText::new(format!("{}{}", state.s().selected_prefix, t.name))
                         .color(egui::Color32::DARK_GRAY),
                 );
             }

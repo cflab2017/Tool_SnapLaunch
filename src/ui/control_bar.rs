@@ -7,39 +7,34 @@ use crate::msgbox;
 use crate::registry;
 
 pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
+    let s = state.s();
     ui.separator();
     ui.horizontal(|ui| {
-        if ui.button("📥 메뉴 설치").clicked() {
+        if ui.button(s.btn_install).clicked() {
             match registry::install() {
                 Ok(_) => {
-                    msgbox::info(
-                        "컨텍스트 메뉴가 설치되었습니다.\n바탕화면이나 폴더 빈 공간에서 우클릭하여 확인하세요.",
-                        "SnapLaunch",
-                    );
+                    msgbox::info(s.install_success, "SnapLaunch");
                     state.refresh_install_state();
                     state.dirty_since_last_install = false;
                 }
                 Err(e) => {
                     msgbox::error(
-                        &format!("메뉴 설치 중 오류가 발생했습니다.\n\n{}", e),
+                        &format!("{}{}", s.install_error_prefix, e),
                         "SnapLaunch",
                     );
                 }
             }
         }
-        if ui.button("📤 Uninstall").clicked() {
-            if msgbox::confirm(
-                "컨텍스트 메뉴를 제거하시겠습니까?\n(등록된 툴 목록 파일은 그대로 유지됩니다.)",
-                "SnapLaunch",
-            ) {
+        if ui.button(s.btn_uninstall).clicked() {
+            if msgbox::confirm(s.uninstall_confirm, "SnapLaunch") {
                 match registry::uninstall() {
                     Ok(_) => {
-                        msgbox::info("컨텍스트 메뉴가 제거되었습니다.", "SnapLaunch");
+                        msgbox::info(s.uninstall_success, "SnapLaunch");
                         state.refresh_install_state();
                     }
                     Err(e) => {
                         msgbox::error(
-                            &format!("메뉴 제거 중 오류가 발생했습니다.\n\n{}", e),
+                            &format!("{}{}", s.uninstall_error_prefix, e),
                             "SnapLaunch",
                         );
                     }
@@ -47,21 +42,21 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             }
         }
         let refresh_btn = if state.dirty_since_last_install {
-            egui::Button::new(RichText::new("🔄 메뉴 갱신 (변경됨)").color(Color32::WHITE))
+            egui::Button::new(RichText::new(s.btn_refresh_dirty).color(Color32::WHITE))
                 .fill(Color32::from_rgb(40, 110, 200))
         } else {
-            egui::Button::new("🔄 메뉴 갱신")
+            egui::Button::new(s.btn_refresh)
         };
         if ui.add(refresh_btn).clicked() {
             match registry::install() {
                 Ok(_) => {
-                    msgbox::info("컨텍스트 메뉴가 최신 상태로 갱신되었습니다.", "SnapLaunch");
+                    msgbox::info(s.refresh_success, "SnapLaunch");
                     state.refresh_install_state();
                     state.dirty_since_last_install = false;
                 }
                 Err(e) => {
                     msgbox::error(
-                        &format!("메뉴 갱신 중 오류가 발생했습니다.\n\n{}", e),
+                        &format!("{}{}", s.refresh_error_prefix, e),
                         "SnapLaunch",
                     );
                 }
@@ -73,11 +68,9 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
 
     // 상태 라벨
     let status_text = if state.installed {
-        RichText::new("✅ 컨텍스트 메뉴가 설치되어 있습니다.")
-            .color(Color32::from_rgb(20, 130, 60))
+        RichText::new(s.status_installed).color(Color32::from_rgb(20, 130, 60))
     } else {
-        RichText::new("⚠ 컨텍스트 메뉴가 아직 설치되지 않았습니다. \"메뉴 설치\" 를 눌러 주세요.")
-            .color(Color32::from_rgb(180, 100, 0))
+        RichText::new(s.status_not_installed).color(Color32::from_rgb(180, 100, 0))
     };
     ui.label(status_text);
 
@@ -85,13 +78,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
     if let Some(reg_path) = &state.registered_exe_path {
         if let Some(cur_path) = &state.current_exe_path {
             if !paths_equal(reg_path, cur_path) {
-                ui.label(
-                    RichText::new(format!(
-                        "⚠ 등록된 EXE 경로와 현재 위치가 다릅니다.\n  등록된 경로: {}\n  현재 위치   : {}\n  \"메뉴 갱신\" 을 눌러 재등록해 주세요.",
-                        reg_path, cur_path
-                    ))
-                    .color(Color32::from_rgb(180, 60, 60)),
-                );
+                let warn = s
+                    .path_mismatch_template
+                    .replace("{old}", reg_path)
+                    .replace("{new}", cur_path);
+                ui.label(RichText::new(warn).color(Color32::from_rgb(180, 60, 60)));
             }
         }
     }
