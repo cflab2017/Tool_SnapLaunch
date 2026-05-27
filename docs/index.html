@@ -274,10 +274,10 @@
   }
   .submenu .item.uninstall { color: var(--danger); }
 
-  /* "툴 실행됨" 토스트 */
+  /* "툴 실행됨" 토스트 — 캡션과 겹치지 않도록 우상단으로 이동 */
   .toast {
     position: absolute;
-    bottom: 24px;
+    top: 56px;
     right: 24px;
     background: rgba(20, 130, 90, 0.95);
     color: #fff;
@@ -291,10 +291,75 @@
     animation: toast 12s infinite ease-in-out;
   }
   @keyframes toast {
-    0%, 87%  { opacity: 0; transform: translateY(10px); }
+    0%, 87%  { opacity: 0; transform: translateY(-10px); }
     90%, 95% { opacity: 1; transform: translateY(0); }
-    98%, 100% { opacity: 0; transform: translateY(10px); }
+    98%, 100% { opacity: 0; transform: translateY(-10px); }
   }
+
+  /* ──────────────────────────────────────────────────────────────
+     자막 오버레이 + 한·영 토글
+     ────────────────────────────────────────────────────────────── */
+  .caption-overlay {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 86%;
+    min-height: 1.6em;
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 15.5px;
+    font-weight: 500;
+    text-align: center;
+    pointer-events: none;
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    letter-spacing: 0.2px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
+  }
+  .caption-overlay.visible { opacity: 1; }
+
+  .cc-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--text-dim);
+    flex-wrap: wrap;
+  }
+  .cc-controls .label {
+    margin-right: 4px;
+  }
+  .cc-controls button {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .cc-controls button:hover { background: rgba(255,255,255,0.12); }
+  .cc-controls button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .cc-controls .vtt-links {
+    margin-left: 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .cc-controls .vtt-links a { color: var(--text-dim); margin: 0 4px; }
+  .cc-controls .vtt-links a:hover { color: var(--accent); }
 
   /* ──────────────────────────────────────────────────────────────
      관리 GUI 목업 (정적)
@@ -533,6 +598,22 @@
 
     <!-- 실행 토스트 -->
     <div class="toast">✅ VS Code 실행 완료</div>
+
+    <!-- 자막 오버레이 (캡션) -->
+    <div class="caption-overlay" id="captionOverlay"></div>
+  </div>
+
+  <!-- 한·영 자막 토글 -->
+  <div class="cc-controls">
+    <span class="label">자막 / Captions:</span>
+    <button id="ccKo" class="active" onclick="setCaptionLang('ko')">한국어</button>
+    <button id="ccEn" onclick="setCaptionLang('en')">English</button>
+    <button id="ccOff" onclick="toggleCaptions()">CC ON</button>
+    <span class="vtt-links">
+      WebVTT:
+      <a href="./captions.ko.vtt" download>ko.vtt</a>·
+      <a href="./captions.en.vtt" download>en.vtt</a>
+    </span>
   </div>
 </section>
 
@@ -695,6 +776,141 @@
     <a href="https://github.com/cflab2017/Tool_SnapLaunch/blob/main/README.md">README</a>
   </div>
 </footer>
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   자막(WebVTT) 동기화
+   ──────────────────────────────────────────────────────────────
+   - docs/captions.ko.vtt, docs/captions.en.vtt 를 fetch 로 읽어
+     커스텀 파서로 cue 배열을 만든다.
+   - 데모 CSS 애니메이션은 12초 주기 무한 반복이므로
+     performance.now() % 12000 을 현재 위치(currentTime)로 사용한다.
+   - requestAnimationFrame 으로 매 프레임 캡션을 갱신한다.
+   - file:// 로 열어 fetch 가 실패할 경우를 대비해 인라인 fallback 도 보유.
+   ────────────────────────────────────────────────────────────── */
+
+const ANIM_DURATION_MS = 12000;
+const overlay = document.getElementById('captionOverlay');
+
+// 페이지 로드와 동시에 CSS 애니메이션도 시작되므로 같은 기준점 사용
+const T0 = performance.now();
+
+let currentLang = 'ko';
+let captionsOn = true;
+const cueTables = { ko: [], en: [] };
+
+/** "HH:MM:SS.mmm" → 초(float) */
+function parseTimestamp(s) {
+  const m = s.match(/(\d+):(\d+):(\d+)\.(\d+)/);
+  if (!m) return 0;
+  return (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4]) / 1000;
+}
+
+/** WebVTT 문자열 → [{ start, end, text }] */
+function parseVtt(text) {
+  const cues = [];
+  const blocks = text.replace(/\r\n/g, '\n').split(/\n\s*\n/);
+  for (const block of blocks) {
+    const lines = block.split('\n').filter(l => l.length > 0);
+    // 타임라인 줄을 찾는다 (HH:MM:SS.mmm --> HH:MM:SS.mmm)
+    const timeLineIdx = lines.findIndex(l => l.includes('-->'));
+    if (timeLineIdx < 0) continue;
+    const [startStr, endStr] = lines[timeLineIdx].split('-->').map(s => s.trim());
+    const start = parseTimestamp(startStr);
+    const end = parseTimestamp(endStr);
+    const text = lines.slice(timeLineIdx + 1).join('\n').trim();
+    if (text) cues.push({ start, end, text });
+  }
+  return cues;
+}
+
+/** fetch 가 실패할 경우(보통 file://)의 인라인 fallback */
+const FALLBACK = {
+  ko: `WEBVTT
+
+00:00:00.000 --> 00:00:01.500
+바탕화면 위에서 마우스 오른쪽 버튼을 누르면…
+
+00:00:01.500 --> 00:00:04.500
+컨텍스트 메뉴에 "🔧 자주사용하는 툴" 항목이 나타납니다.
+
+00:00:04.500 --> 00:00:07.500
+마우스를 가져가면 등록해둔 즐겨찾기 앱이 펼쳐집니다.
+
+00:00:07.500 --> 00:00:10.500
+원하는 앱을 클릭하면 그 자리에서 바로 실행.
+
+00:00:10.500 --> 00:00:12.000
+✅ 끝! 모든 게 한 번의 우클릭으로 해결.`,
+  en: `WEBVTT
+
+00:00:00.000 --> 00:00:01.500
+Right-click anywhere on the desktop…
+
+00:00:01.500 --> 00:00:04.500
+and "🔧 Favorite Tools" appears in the context menu.
+
+00:00:04.500 --> 00:00:07.500
+Hover over it to reveal your registered apps.
+
+00:00:07.500 --> 00:00:10.500
+Click any app to launch it instantly.
+
+00:00:10.500 --> 00:00:12.000
+✅ Done — your favorites are one right-click away.`
+};
+
+async function loadCaptionFile(lang) {
+  try {
+    const res = await fetch(`./captions.${lang}.vtt`, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('http ' + res.status);
+    const text = await res.text();
+    cueTables[lang] = parseVtt(text);
+  } catch (e) {
+    // file:// 등에서 fetch 실패 → 인라인 fallback 사용
+    cueTables[lang] = parseVtt(FALLBACK[lang]);
+  }
+}
+
+async function bootCaptions() {
+  await Promise.all([loadCaptionFile('ko'), loadCaptionFile('en')]);
+  requestAnimationFrame(tick);
+}
+
+function tick() {
+  if (captionsOn) {
+    const elapsedSec = ((performance.now() - T0) % ANIM_DURATION_MS) / 1000;
+    const cue = cueTables[currentLang].find(c => elapsedSec >= c.start && elapsedSec < c.end);
+    const text = cue ? cue.text : '';
+    if (overlay.textContent !== text) {
+      overlay.textContent = text;
+    }
+    overlay.classList.toggle('visible', text.length > 0);
+  } else {
+    overlay.classList.remove('visible');
+  }
+  requestAnimationFrame(tick);
+}
+
+function setCaptionLang(lang) {
+  currentLang = lang;
+  // 라디오 활성 표시
+  document.getElementById('ccKo').classList.toggle('active', lang === 'ko');
+  document.getElementById('ccEn').classList.toggle('active', lang === 'en');
+  // CC 가 꺼져 있었다면 자동으로 켠다
+  if (!captionsOn) toggleCaptions();
+}
+
+function toggleCaptions() {
+  captionsOn = !captionsOn;
+  document.getElementById('ccOff').textContent = captionsOn ? 'CC ON' : 'CC OFF';
+  document.getElementById('ccOff').classList.toggle('active', captionsOn);
+}
+
+// 페이지 로드 시 시작
+document.getElementById('ccOff').classList.add('active');
+bootCaptions();
+</script>
 
 </body>
 </html>
