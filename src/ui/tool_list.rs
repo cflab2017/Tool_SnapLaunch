@@ -5,6 +5,7 @@ use egui::{Color32, Grid, RichText, ScrollArea};
 
 use crate::app::{AppState, EditingBuffer};
 use crate::path_util::tool_exists;
+use crate::ui::style;
 
 /// 죽은(경로가 유효하지 않은) 툴 이름 표시에 사용할 색상
 const DEAD_COLOR: Color32 = Color32::from_rgb(200, 60, 60);
@@ -83,7 +84,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                 ui.text_edit_singleline(&mut buf.path);
                                 ui.text_edit_singleline(&mut buf.args);
                                 ui.horizontal(|ui| {
-                                    if ui.button(s.btn_save).clicked() {
+                                    if ui.add(style::primary(s.btn_save)).clicked() {
                                         to_save_edit = Some(id.clone());
                                     }
                                     if ui.button(s.btn_cancel).clicked() {
@@ -128,7 +129,11 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                                     });
                                     to_select = Some(id.clone());
                                 }
-                                if ui.button("❌").on_hover_text(s.delete_tooltip).clicked() {
+                                if ui
+                                    .add(style::danger_icon("❌"))
+                                    .on_hover_text(s.delete_tooltip)
+                                    .clicked()
+                                {
                                     state.pending_delete_id = Some(id.clone());
                                 }
                             });

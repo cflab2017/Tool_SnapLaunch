@@ -5,12 +5,13 @@ use egui::{Color32, RichText};
 use crate::app::AppState;
 use crate::msgbox;
 use crate::registry;
+use crate::ui::style;
 
 pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
     let s = state.s();
     ui.separator();
     ui.horizontal(|ui| {
-        if ui.button(s.btn_install).clicked() {
+        if ui.add(style::primary(s.btn_install)).clicked() {
             match registry::install() {
                 Ok(_) => {
                     msgbox::info(s.install_success, "SnapLaunch");
@@ -25,7 +26,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 }
             }
         }
-        if ui.button(s.btn_uninstall).clicked() {
+        if ui.add(style::danger(s.btn_uninstall)).clicked() {
             if msgbox::confirm(s.uninstall_confirm, "SnapLaunch") {
                 match registry::uninstall() {
                     Ok(_) => {
@@ -78,11 +79,16 @@ fn paths_equal(a: &str, b: &str) -> bool {
 /// dirty 상태일 때는 파란 강조 스타일이 적용된다.
 pub fn refresh_button(ui: &mut egui::Ui, state: &mut AppState) {
     let s = state.s();
+    // 평소엔 정보색(파랑), 변경 보류 상태일 땐 더 밝은 파랑 + bold 로 강조
     let btn = if state.dirty_since_last_install {
-        egui::Button::new(RichText::new(s.btn_refresh_dirty).color(Color32::WHITE))
-            .fill(Color32::from_rgb(40, 110, 200))
+        egui::Button::new(
+            RichText::new(s.btn_refresh_dirty)
+                .color(Color32::WHITE)
+                .strong(),
+        )
+        .fill(Color32::from_rgb(70, 140, 230))
     } else {
-        egui::Button::new(s.btn_refresh)
+        style::info(s.btn_refresh)
     };
     if ui.add(btn).clicked() {
         match registry::install() {

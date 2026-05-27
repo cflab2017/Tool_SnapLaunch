@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use crate::app::AppState;
 use crate::config::tools::file_stem_name;
 use crate::i18n::Strings;
+use crate::ui::style;
 
 pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
     let s = state.s();
@@ -48,10 +49,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
     ui.add_space(6.0);
     ui.horizontal(|ui| {
         let can_add = !state.form.name.trim().is_empty() && !state.form.path.trim().is_empty();
-        if ui
-            .add_enabled(can_add, egui::Button::new(s.btn_add))
-            .clicked()
-        {
+        if ui.add_enabled(can_add, style::primary(s.btn_add)).clicked() {
             state.config.add_tool(
                 state.form.name.trim().to_string(),
                 state.form.path.trim().to_string(),
