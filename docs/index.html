@@ -362,8 +362,30 @@
   .cc-controls .vtt-links a:hover { color: var(--accent); }
 
   /* ──────────────────────────────────────────────────────────────
-     관리 GUI 목업 (정적)
+     관리 GUI 스크린샷
      ────────────────────────────────────────────────────────────── */
+  .gui-screenshot {
+    max-width: 720px;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+    background: #1c1f26;
+  }
+  .gui-screenshot img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .gui-screenshot .caption {
+    padding: 12px 18px;
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  /* (legacy static mockup styles — kept for ease of restoring if needed)
+     아래는 더 이상 사용되지 않지만 참고용으로 보존한다. */
   .gui-mockup {
     background: #2a2d35;
     border-radius: 14px;
@@ -626,59 +648,9 @@
     툴 추가/편집/순서변경, 한·영 전환, 메뉴 설치/제거 모두 한 창에서. 변경된 행은 옅은 파랑, 죽은 경로는 빨강으로 즉시 표시됩니다.
   </p>
 
-  <div class="gui-mockup">
-    <div class="gui-titlebar">
-      <img src="./icon.png" alt="">
-      <span>🔧 자주사용하는 툴 관리   ·   v1.0.0   ·   Joseph.han · coding-now.com</span>
-      <span class="controls">─ □ ✕</span>
-    </div>
-
-    <div class="gui-body">
-      <!-- 언어 라디오 -->
-      <div style="margin-bottom: 12px; font-size: 13px;">
-        언어: &nbsp;◉ 한국어 &nbsp;&nbsp; ○ English
-      </div>
-
-      <h3>등록된 툴 목록</h3>
-      <table class="gui-table">
-        <thead>
-          <tr><th>순서</th><th>이름</th><th>경로</th><th>인자</th><th>작업</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>1</td><td>Notepad++</td><td>C:\Program Files\Notepad++\notepad++.exe</td><td></td><td class="actions">✏ <span class="x">❌</span></td></tr>
-          <tr class="dirty"><td>2</td><td>● VS Code</td><td>C:\Users\user\AppData\Local\Programs\Microsoft VS Code\Code.exe</td><td></td><td class="actions">✏ <span class="x">❌</span></td></tr>
-          <tr><td>3</td><td>계산기</td><td>calc.exe</td><td></td><td class="actions">✏ <span class="x">❌</span></td></tr>
-          <tr class="dead"><td>4</td><td>⚠ OldTool</td><td>D:\Removed\old.exe</td><td></td><td class="actions">✏ <span class="x">❌</span></td></tr>
-        </tbody>
-      </table>
-
-      <div class="row-buttons">
-        <button class="chip nav">🔼 위로</button>
-        <button class="chip nav">🔽 아래로</button>
-        <button class="chip info">🔄 메뉴 갱신 (변경됨)</button>
-      </div>
-
-      <h3>➕ 새 툴 추가</h3>
-      <div class="form-grid">
-        <label>이름:</label>
-        <input type="text" placeholder="컨텍스트 메뉴에 표시될 이름">
-        <label>경로:</label>
-        <input type="text" placeholder="C:\... 또는 PATH 의 명령 (calc.exe)">
-        <label>인자:</label>
-        <input type="text" placeholder="공백 구분, 선택">
-      </div>
-      <div class="row-add">
-        <button class="chip utility">📁 찾아보기</button>
-        <button class="chip primary">➕ 추가</button>
-        <button class="chip warning">입력 초기화</button>
-      </div>
-
-      <div class="control-bar">
-        <button class="chip primary">📥 마우스 오른쪽 메뉴 설치</button>
-        <button class="chip danger">📤 Uninstall</button>
-        <span class="status-ok">✅ 컨텍스트 메뉴가 설치되어 있습니다.</span>
-      </div>
-    </div>
+  <div class="gui-screenshot">
+    <img src="./snap-launch.png" alt="SnapLaunch 관리 창 — 6개 툴이 등록되어 있고 모든 컬러 버튼과 상태 표시가 보이는 실제 스크린샷">
+    <div class="caption">실제 실행 화면 · v1.0.0 (English 모드)</div>
   </div>
 </section>
 
