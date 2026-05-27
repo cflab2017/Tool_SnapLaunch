@@ -161,7 +161,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
 
     ui.add_space(6.0);
 
-    // 순서 이동 버튼
+    // 순서 이동 버튼 + 메뉴 갱신 버튼
     ui.horizontal(|ui| {
         let selected = state.selected_id.clone();
         let enabled = selected.is_some() && state.config.tools.len() > 1;
@@ -188,6 +188,9 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 }
             }
         });
+
+        // 아래로 버튼 바로 옆에 메뉴 갱신 버튼 — 순서 변경 직후 즉시 동기화할 수 있게 한다.
+        crate::ui::control_bar::refresh_button(ui, state);
 
         if let Some(id) = &state.selected_id {
             if let Some(t) = state.config.find(id) {

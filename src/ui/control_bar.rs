@@ -41,27 +41,6 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
                 }
             }
         }
-        let refresh_btn = if state.dirty_since_last_install {
-            egui::Button::new(RichText::new(s.btn_refresh_dirty).color(Color32::WHITE))
-                .fill(Color32::from_rgb(40, 110, 200))
-        } else {
-            egui::Button::new(s.btn_refresh)
-        };
-        if ui.add(refresh_btn).clicked() {
-            match registry::install() {
-                Ok(_) => {
-                    msgbox::info(s.refresh_success, "SnapLaunch");
-                    state.refresh_install_state();
-                    state.dirty_since_last_install = false;
-                }
-                Err(e) => {
-                    msgbox::error(
-                        &format!("{}{}", s.refresh_error_prefix, e),
-                        "SnapLaunch",
-                    );
-                }
-            }
-        }
     });
 
     ui.add_space(6.0);
@@ -92,4 +71,32 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
 fn paths_equal(a: &str, b: &str) -> bool {
     let norm = |s: &str| s.replace('/', "\\").to_lowercase();
     norm(a) == norm(b)
+}
+
+/// "메뉴 갱신" 버튼만 별도로 렌더링한다. 툴 목록의 위/아래 버튼 옆에 배치되어,
+/// 사용자가 순서를 바꾼 직후 곧바로 메뉴를 동기화할 수 있게 한다.
+/// dirty 상태일 때는 파란 강조 스타일이 적용된다.
+pub fn refresh_button(ui: &mut egui::Ui, state: &mut AppState) {
+    let s = state.s();
+    let btn = if state.dirty_since_last_install {
+        egui::Button::new(RichText::new(s.btn_refresh_dirty).color(Color32::WHITE))
+            .fill(Color32::from_rgb(40, 110, 200))
+    } else {
+        egui::Button::new(s.btn_refresh)
+    };
+    if ui.add(btn).clicked() {
+        match registry::install() {
+            Ok(_) => {
+                msgbox::info(s.refresh_success, "SnapLaunch");
+                state.refresh_install_state();
+                state.dirty_since_last_install = false;
+            }
+            Err(e) => {
+                msgbox::error(
+                    &format!("{}{}", s.refresh_error_prefix, e),
+                    "SnapLaunch",
+                );
+            }
+        }
+    }
 }
